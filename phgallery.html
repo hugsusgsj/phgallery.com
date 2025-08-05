@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Community Gallery</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; }
+    #gallery img { width: 200px; margin: 10px; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <h1>📸 Public Image Gallery</h1>
+
+  <form id="upload-form">
+    <input type="text" id="name" placeholder="Your Name" required><br><br>
+    <input type="file" id="file-input" accept="image/*" required><br><br>
+    <button type="submit">Upload</button>
+  </form>
+
+  <h2>Gallery</h2>
+  <div id="gallery"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+    const supabase = supabase.createClient(
+      'https://nifkrfcrdwmqqyozxeix.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pZmtyZmNyZHdtcXF5b3p4ZWl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyOTA5NTksImV4cCI6MjA2OTg2Njk1OX0.59q09I4Qxr5RezdlRoRiq9HkyGB0gF6yI6EvCEhgd38'
+    );
+
+    async function loadImages() {
+      const { data, error } = await supabase
+        .from('gallery')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      const gallery = document.getElementById('gallery');
+      gallery.innerHTML = '';
+
+      data.forEach(item => {
+        const img = document.createElement('img');
+        img.src = item.image_url;
+        img.alt = item.name;
+        gallery.appendChild(img);
+      });
+    }
+
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const file = document.getElementById('file-input').files[0];
+      const filePath = `public/${Date.now()}_${file.name}`;
+
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from('images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        alert('Upload failed!');
+        return;
+      }
+
+      const imageUrl = `https://nifkrfcrdwmqqyozxeix.supabase.co/storage/v1/object/public/images/${filePath}`;
+
+      const { error: insertError } = await supabase
+        .from('gallery')
+        .insert([{ name, image_url: imageUrl }]);
+
+      if (insertError) {
+        alert('Database insert failed!');
+      } else {
+        alert('Upload successful!');
+        e.target.reset();
+        loadImages();
+      }
+    });
+
+    loadImages();
+  </script>
+</body>
+</html>
